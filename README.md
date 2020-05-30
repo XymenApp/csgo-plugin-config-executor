@@ -1,6 +1,9 @@
 # Config Executer for CSGO Servers
 Execute configs on startup
 
+# Installation
+Download [latest](https://github.com/XymenApp/csgo-plugin-config-executor/releases/latest) build from [Releases](https://github.com/XymenApp/csgo-plugin-config-executor/releases) page and copy-paste. THAT'S IT.
+
 # Convars
 - `sm_ce_version` : Show the version of the plugin
 
