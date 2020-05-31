@@ -1,11 +1,10 @@
 #include <sourcemod>
 #define AUTHOR "XymenApps"
 #define TAG "-=XymenGaming=-"
-#define PLUGIN_VERSION "1.0"
+#define PLUGIN_VERSION "1.1"
 
 
 ConVar g_ConfigCvar;
-bool isExecuted = false;
 
 public Plugin myinfo = 
 {
@@ -31,12 +30,11 @@ public void OnClientConnected(int client){
 
 public void PluginMain(int client){
 	PrintToServer("XYG Client Number: %d", client);
-	if(isExecuted){
+	if(client == 1){
+		ExecCfg(g_ConfigCvar);
+	}else{
 		PrintToServer("----------------XYG-----------------Aborting");
-		return;
 	}
-	ExecCfg(g_ConfigCvar);
-	isExecuted = true;
 }
 
 public bool ExecCfg(ConVar cvar)
