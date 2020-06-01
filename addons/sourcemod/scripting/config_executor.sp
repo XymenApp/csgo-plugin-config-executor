@@ -1,10 +1,13 @@
 #include <sourcemod>
-#define AUTHOR "XymenApps"
-#define TAG "-=XymenGaming=-"
-#define PLUGIN_VERSION "1.1"
+#define AUTHOR "-=XymenGaming=-"
+#define MAX_CONFIG_COUNT 1000
+#define PLUGIN_VERSION "1.2"
+#define CONFIG_FILE_PATH "configs/xyg_ce.cfg"
 
+int configCount;
+char g_sConfigString[MAX_CONFIG_COUNT + 1][1024], g_sConfigFile[MAX_CONFIG_COUNT + 1][1024];
 
-ConVar g_ConfigCvar;
+ConVar g_HostnameCvar;
 
 public Plugin myinfo = 
 {
@@ -18,42 +21,73 @@ public Plugin myinfo =
 public OnPluginStart()
 {
 	CreateConVar("sm_ce_version", PLUGIN_VERSION, "Show the version of the plugin", FCVAR_SPONLY|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	g_ConfigCvar = CreateConVar("sm_config_executor_file", "xyg_default.cfg", "Config to execute when all the plugins are loaded. File will be executed once in the lifetime of plugin");
 	RegAdminCmd("sm_ce_execute", CmdReExecute, ADMFLAG_GENERIC, "Execute the config files insile the folder");
 	PrintToServer("Plugin made with love by %s", AUTHOR);
-	AutoExecConfig(true, "config_executor", "sourcemod");
+	g_HostnameCvar = FindConVar("hostname");
+  	if (g_HostnameCvar == INVALID_HANDLE)
+    		SetFailState("Failed to find cvar \"hostname\"");
+	loadConfigs();
+}
+public void loadConfigs(){
+	char  configFile[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, configFile, sizeof(configFile), CONFIG_FILE_PATH);
+	if(!FileExists(configFile))
+		SetFailState("Cannot find config file \"%s\"!", configFile);
+	KeyValues kv = CreateKeyValues("CONFIGS");
+	kv.ImportFromFile(configFile);
+	configCount = 0;
+	if(kv.GotoFirstSubKey()){
+		char name[1024];
+		char file[1024];
+		do{
+			kv.GetSectionName(name, sizeof(name));
+			kv.GetString("file", file, sizeof(file));				
+			strcopy(g_sConfigString[configCount], sizeof(g_sConfigString[]), name);
+			strcopy(g_sConfigFile[configCount], sizeof(g_sConfigFile[]), file);
+			configCount++;
+		}while (kv.GotoNextKey());
+	}
+	kv.Rewind();
+	delete kv;
 }
 
 public void OnClientConnected(int client){
-	PluginMain(client);
-}
-
-public void PluginMain(int client){
-	PrintToServer("XYG Client Number: %d", client);
+	PrintToServer("[%s] Client Number: %d connected.", AUTHOR, client);
 	if(client == 1){
-		ExecCfg(g_ConfigCvar);
+		ExecCfg();
 	}else{
-		PrintToServer("----------------XYG-----------------Aborting");
+		PrintToServer("[%s] Not invoked at startup. Aborting Config Executor!!", AUTHOR);
 	}
 }
 
-public bool ExecCfg(ConVar cvar)
+public bool ExecCfg()
 {
-	char cfg[PLATFORM_MAX_PATH];
-  	cvar.GetString(cfg, sizeof(cfg));
-	ServerCommand("exec \"%s\"", cfg);
+	PrintToServer("[%s] ExecCfg called", AUTHOR);
+	char hostname[1024];
+  	g_HostnameCvar.GetString(hostname, sizeof(hostname));
+  	int i, result;
+  	for(i = 0;i < configCount; i++){
+  		result = StrContains(hostname, g_sConfigString[i], false);
+  		if(result > -1){
+  			PrintToServer("[%s] Executing config: %s", AUTHOR, g_sConfigFile[i]);
+			ServerCommand("exec \"%s\"", g_sConfigFile[i]);
+			return true;
+  		}
+  	}
+  	PrintToServer("[%s] Executing config: %s", AUTHOR, "xyg_default");
+  	ServerCommand("exec xyg_default");
 	return true;
 }
 
 public Action CmdReExecute(client, args)
 {
-	if(ExecCfg(g_ConfigCvar))
+	if(ExecCfg())
 	{
-		PrintToChat(client, "[%s] Server Configs have been executed!", TAG);
+		PrintToChat(client, "[%s] Server Configs have been executed!", AUTHOR);
 	}
 	else
 	{
-		PrintToChat(client, "[%s] An error ocurred while executing the configs!", TAG);
+		PrintToChat(client, "[%s] An error ocurred while executing the configs!", AUTHOR);
 	}
 	return Plugin_Handled;
 }
